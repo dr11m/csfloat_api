@@ -1,8 +1,8 @@
 import aiohttp
+from typing import Iterable, Union, Optional
 from .models.listing import Listing
 from .models.buy_orders import BuyOrders
 from .models.me import Me
-from typing import Iterable, Union, Optional
 
 __all__ = "Client"
 
