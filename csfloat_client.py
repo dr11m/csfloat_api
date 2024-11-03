@@ -58,12 +58,13 @@ class Client:
 
         async with aiohttp.ClientSession(headers=self._headers) as session:
             async with session.request(method=method, url=url, ssl=False, json=json_data) as response:
+                response_text = await response.text()  # Чтение текста ответа асинхронно
                 if response.status in self.ERROR_MESSAGES:
-                    raise Exception(f"{self.ERROR_MESSAGES[response.status]}, {response.text}")
+                    raise Exception(f"{self.ERROR_MESSAGES[response.status]}, {response_text}")
                 if response.status != 200:
-                    raise Exception(f'Error: {response.status}, {response.text}')
+                    raise Exception(f'Error: {response.status}, {response_text}')
                 if response.content_type != 'application/json':
-                    raise Exception(f"Expected JSON, got {response.content_type},{response.text}")
+                    raise Exception(f"Expected JSON, got {response.content_type}, {response_text}")
 
                 return await response.json()
 
