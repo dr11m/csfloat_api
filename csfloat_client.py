@@ -3,11 +3,19 @@ from typing import Iterable, Union, Optional
 from .models.listing import Listing
 from .models.buy_orders import BuyOrders
 from .models.me import Me
+import asyncio
+from functools import wraps
 
 __all__ = "Client"
 
 _API_URL = 'https://csfloat.com/api/v1'
 
+
+def sync_to_async(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        return asyncio.run(func(*args, **kwargs))
+    return wrapper
 
 class Client:
     _SUPPORTED_METHODS = ['GET', 'POST']
@@ -69,6 +77,7 @@ class Client:
         if type_ not in ('buy_now', 'auction'):
             raise ValueError(f'Unknown type parameter "{type_}"')
 
+    @sync_to_async
     async def get_exchange_rates(self) -> Optional[dict]:
         parameters = "/meta/exchange-rates"
         method = "GET"
@@ -76,6 +85,7 @@ class Client:
         response = await self._request(method=method, parameters=parameters)
         return response
 
+    @sync_to_async
     async def get_me(self, *, raw_response: bool = False) -> Optional[Me]:
         parameters = "/me"
         method = "GET"
@@ -87,6 +97,7 @@ class Client:
 
         return Me(data=response)
 
+    @sync_to_async
     async def get_location(self) -> Optional[dict]:
         parameters = "/meta/location"
         method = "GET"
@@ -94,6 +105,7 @@ class Client:
         response = await self._request(method=method, parameters=parameters)
         return response
 
+    @sync_to_async
     async def get_pending_trades(
             self, limit: int = 500, page: int = 0
     ) -> Optional[dict]:
@@ -103,6 +115,7 @@ class Client:
         response = await self._request(method=method, parameters=parameters)
         return response
 
+    @sync_to_async
     async def get_similar(
             self, *, listing_id: int, raw_response: bool = False
     ) -> Union[Iterable[Listing], dict]:
@@ -120,6 +133,7 @@ class Client:
 
         return listings
 
+    @sync_to_async
     async def get_buy_orders(
             self, *, listing_id: int, limit: int = 10, raw_response: bool = False
     ) -> Optional[list[BuyOrders]]:
@@ -137,6 +151,7 @@ class Client:
 
         return listings
 
+    @sync_to_async
     async def get_all_listings(
             self,
             *,
@@ -225,6 +240,7 @@ class Client:
 
         return listings
 
+    @sync_to_async
     async def get_specific_listing(
             self, listing_id: int, *, raw_response: bool = False
     ) -> Union[Listing, dict]:
@@ -238,6 +254,7 @@ class Client:
 
         return Listing(data=response)
 
+    @sync_to_async
     async def create_listing(
         self,
         *,
@@ -285,6 +302,7 @@ class Client:
         response = await self._request(method=method, parameters=parameters, json_data=json_data)
         return response
 
+    @sync_to_async
     async def make_offer(
             self, *, listing_id: int, price: int
     ) -> Optional[dict]:
