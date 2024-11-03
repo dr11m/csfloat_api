@@ -7,6 +7,7 @@ from src.csfloat_api.models.buy_orders import BuyOrders
 from src.csfloat_api.models.similar_buy_orders import SimilarBuyOrder
 from src.csfloat_api.models.me import Me
 from src.csfloat_api.models.my_active_buy_orders import MyBuyOrdersResponse
+from config.app_settings import settings
 import asyncio
 from functools import wraps
 
@@ -14,13 +15,11 @@ __all__ = "Client"
 
 _API_URL = 'https://csfloat.com/api/v1'
 
-secs_between_request = 2
-
 
 def sync_to_async(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        time.sleep(secs_between_request)
+        time.sleep(settings.secs_between_request)
         return asyncio.run(func(*args, **kwargs))
     return wrapper
 
@@ -42,7 +41,7 @@ class Client:
 
     __slots__ = (
         "API_KEY",
-        "_headers"
+        "_headers",
     )
 
     def __init__(self, api_key: str) -> None:
@@ -60,11 +59,11 @@ class Client:
         async with aiohttp.ClientSession(headers=self._headers) as session:
             async with session.request(method=method, url=url, ssl=False, json=json_data) as response:
                 if response.status in self.ERROR_MESSAGES:
-                    raise Exception(self.ERROR_MESSAGES[response.status])
+                    raise Exception(f"{self.ERROR_MESSAGES[response.status]}, {response.text}")
                 if response.status != 200:
-                    raise Exception(f'Error: {response.status}')
+                    raise Exception(f'Error: {response.status}, {response.text}')
                 if response.content_type != 'application/json':
-                    raise Exception(f"Expected JSON, got {response.content_type}")
+                    raise Exception(f"Expected JSON, got {response.content_type},{response.text}")
 
                 return await response.json()
 
