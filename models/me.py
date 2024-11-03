@@ -173,6 +173,10 @@ class User:
     @property
     def balance(self) -> Optional[int]:
         return self._balance
+    
+    @property
+    def human_balance(self) -> Optional[int]:
+        return round(self._balance / 100, 2)
 
     @property
     def pending_balance(self) -> Optional[int]:

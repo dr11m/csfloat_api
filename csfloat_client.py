@@ -1,8 +1,12 @@
 import aiohttp
+import os
+import time
 from typing import Iterable, Union, Optional
-from .models.listing import Listing
-from .models.buy_orders import BuyOrders
-from .models.me import Me
+from src.csfloat_api.models.listing import Listing
+from src.csfloat_api.models.buy_orders import BuyOrders
+from src.csfloat_api.models.similar_buy_orders import SimilarBuyOrder
+from src.csfloat_api.models.me import Me
+from src.csfloat_api.models.my_active_buy_orders import MyBuyOrdersResponse
 import asyncio
 from functools import wraps
 
@@ -10,15 +14,19 @@ __all__ = "Client"
 
 _API_URL = 'https://csfloat.com/api/v1'
 
+secs_between_request = 2
+
 
 def sync_to_async(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
+        time.sleep(secs_between_request)
         return asyncio.run(func(*args, **kwargs))
     return wrapper
 
+
 class Client:
-    _SUPPORTED_METHODS = ['GET', 'POST']
+    _SUPPORTED_METHODS = ['GET', 'POST', 'DELETE']
     ERROR_MESSAGES = {
         401: 'Unauthorized -- Your API key is wrong.',
         403: 'Forbidden -- The requested resource is hidden for administrators only.',
@@ -43,7 +51,7 @@ class Client:
             'Authorization': self.API_KEY
         }
 
-    async def _request(self, method: str, parameters: str, json_data=None) -> Optional[dict]:
+    async def _request(self, method: str, parameters: str, json_data=None) -> dict:
         if method not in self._SUPPORTED_METHODS:
             raise ValueError('Unsupported HTTP method.')
 
@@ -76,6 +84,70 @@ class Client:
     def _validate_type(self, type_: str) -> None:
         if type_ not in ('buy_now', 'auction'):
             raise ValueError(f'Unknown type parameter "{type_}"')
+    
+    @sync_to_async
+    async def get_similar_buy_orders(
+            self, market_hash_name: str, limit: int = 10, raw_response: bool = False
+    ) -> list[SimilarBuyOrder]:
+        """
+        Fetches similar buy orders based on a given market hash name.
+
+        :param market_hash_name: The market hash name of the item for which to find similar buy orders.
+        :param limit: The maximum number of similar orders to return (default is 10).
+        :param raw_response: If True, returns the raw response from the API.
+        :return: A list of BuyOrders or the raw response.
+        """
+        parameters = f"/buy-orders/similar-orders?limit={limit}"
+        method = "POST"
+
+        json_data = {
+            "market_hash_name": market_hash_name
+        }
+
+        response = await self._request(method=method, parameters=parameters, json_data=json_data)
+
+        if raw_response:
+            return response
+
+        buy_orders = [
+            SimilarBuyOrder(**item) for item in response["data"]
+        ]
+
+        return buy_orders
+    
+    @sync_to_async
+    async def get_my_buy_orders(self, page: int = 0, limit: int = 100) -> Optional[dict]:
+        """
+        Fetches buy orders with pagination.
+
+        :param page: The page number to retrieve (default is 0).
+        :param limit: The number of results per page (default is 100).
+        :return: A dictionary with buy order data.
+        """
+        parameters = f"/me/buy-orders?page={page}&limit={limit}&order=desc"
+        method = "GET"
+
+        response = await self._request(method=method, parameters=parameters)
+        return MyBuyOrdersResponse(**response)
+
+    @sync_to_async
+    async def delete_buy_order(self, order_id: str) -> dict:
+        """
+        Удаляет ордер по его ID.
+
+        :param order_id: ID ордера, который нужно удалить.
+        :return: Ответ от API.
+        """
+        parameters = f"/buy-orders/{order_id}"
+        method = "DELETE"
+
+        response = await self._request(method=method, parameters=parameters)
+
+        # Проверка на корректность ответа
+        if response.get("message") != "successfully removed the order":
+            raise Exception(f"Failed to remove order: {response}")
+
+        return response
 
     @sync_to_async
     async def get_exchange_rates(self) -> Optional[dict]:
@@ -301,6 +373,21 @@ class Client:
 
         response = await self._request(method=method, parameters=parameters, json_data=json_data)
         return response
+    
+    @sync_to_async
+    async def create_buy_order(
+            self, *, market_hash_name: str, max_price: int, quantity: int = 1
+    ) -> Optional[SimilarBuyOrder]:
+        parameters = "/buy-orders"
+        method = "POST"
+        json_data = {
+            "market_hash_name": market_hash_name,
+            "max_price": max_price,
+            "quantity": quantity
+        }
+        
+        response = await self._request(method=method, parameters=parameters, json_data=json_data)
+        return SimilarBuyOrder(**response)
 
     @sync_to_async
     async def make_offer(
@@ -315,3 +402,6 @@ class Client:
         }
         response = await self._request(method=method, parameters=parameters, json_data=json_data)
         return response
+    
+
+csfloat_api = Client(api_key=os.environ["CSFLOT_API"])
