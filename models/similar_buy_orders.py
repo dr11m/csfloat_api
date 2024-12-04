@@ -3,8 +3,6 @@ from typing import List, Optional
 from datetime import datetime
 
 class SimilarBuyOrder(BaseModel):
-    id: str
-    created_at: datetime
     market_hash_name: str
     qty: int
     price: int
