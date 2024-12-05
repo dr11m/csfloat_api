@@ -10,6 +10,7 @@ from src.csfloat_api.models.my_active_buy_orders import MyBuyOrdersResponse
 from config.app_settings import settings
 import asyncio
 from functools import wraps
+from src.utils.logger_setup import logger
 
 __all__ = "Client"
 
@@ -131,7 +132,7 @@ class Client:
         return MyBuyOrdersResponse(**response)
 
     @sync_to_async
-    async def delete_buy_order(self, order_id: str) -> dict:
+    async def delete_buy_order(self, order_id: str) -> None:
         """
         Удаляет ордер по его ID.
 
@@ -141,8 +142,8 @@ class Client:
         parameters = f"/buy-orders/{order_id}"
         method = "DELETE"
 
-        response = await self._request(method=method, parameters=parameters)
-
+        response: dict = await self._request(method=method, parameters=parameters)
+        logger.info(f"delete {order_id} response: {response}")
         # Проверка на корректность ответа
         if response.get("message") != "successfully removed the order":
             raise Exception(f"Failed to remove order: {response}")
