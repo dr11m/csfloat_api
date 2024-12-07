@@ -7,6 +7,7 @@ from src.csfloat_api.models.buy_orders import BuyOrders
 from src.csfloat_api.models.similar_buy_orders import SimilarBuyOrder
 from src.csfloat_api.models.me import Me
 from src.csfloat_api.models.my_active_buy_orders import MyBuyOrdersResponse
+from src.csfloat_api.models.my_trades_response import TradesResponse
 from config.app_settings import settings
 import asyncio
 from functools import wraps
@@ -86,6 +87,30 @@ class Client:
         if type_ not in ('buy_now', 'auction'):
             raise ValueError(f'Unknown type parameter "{type_}"')
     
+    @sync_to_async
+    async def get_my_trades_by_state(
+            self, 
+            role: str = "buyer",  # seller / buyer
+            states: str = "failed,cancelled,verified", # failed,cancelled,verified
+            limit: int = 100, 
+            page: int = 0
+    ) -> dict:
+        """
+        Получает трейды по указанным состояниям.
+
+        :param role: Роль в трейде (по умолчанию "buyer").
+        :param states: Список состояний трейдов, разделённых запятой.
+        :param limit: Лимит количества возвращаемых записей (по умолчанию 30).
+        :param page: Номер страницы (по умолчанию 0).
+        :return: Словарь с данными о трейдах.
+        """
+        parameters = f"/me/trades?role={role}&state={states}&limit={limit}&page={page}"
+        method = "GET"
+
+        response = await self._request(method=method, parameters=parameters)
+        return response
+
+
     @sync_to_async
     async def get_similar_buy_orders(
             self, market_hash_name: str, limit: int = 10, raw_response: bool = False
@@ -406,3 +431,9 @@ class Client:
     
 
 csfloat_api = Client(api_key=os.environ["CSFLOT_API"])
+
+
+if __name__ == "__main__":
+    my_purchases = csfloat_api.get_my_trades_by_state(role="buyer", states="verified", limit=5)
+    my_trades_response = TradesResponse.from_raw(my_purchases)
+    pass
